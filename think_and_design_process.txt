@@ -1,0 +1,19 @@
+Design and thinking behind this project: 
+
+Background: Use SPX constituents data to design a mean reversion pairs trading
+strategy. I haven't spent time on mean reversion/stats arb strategy before, below is some quick research/learning and thoughts 
+
+-  Initial thought is to run rolling correlation matrices and select the pairs with highest correlation. 
+   Potentially cleaning the correlation matrices by using Random Matrix Theory (removing eigenvalues below certian threshold and then reconstruct the correlation matrix)
+-  However only using correlation might lead to false conclusion, using cointegration
+-  Then naturally the idea becomes running correlation first, and running cointegration among the most correlated pairs for pairs selection
+-  Then re-scale the spread using linear regression and obtain beta
+        One problem (as many other systematic strategies using look back window is that the beta determination is too regid as the look back window is fixed )
+        Solution is to use Kalman Filter to keep obtain new information adjust the beta 
+- In terms of exection, the most vanilla approach is to consider how much standard deviation the adjusted spread is away from the mean 
+  Then execute when the adjusted spread passes the entry level, close the position when the adjusted spread converged to 0
+
+- The Cartesian product of all the parameter combinations are tested, statistics are plotted using an interactive heatmap. The idea of a successful strategy is 
+  that the overall performances/statistics are not sensitive to paramters pertubation, and the heatmap should be stable
+
+   
