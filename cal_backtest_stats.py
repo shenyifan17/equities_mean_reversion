@@ -28,7 +28,7 @@ def cal_backtest_stats(sr_ret: pd.Series,
     num_yr = num_cd / 365
     final_val = cum_series.values[-1]
     ret = final_val**(1/num_yr) - 1
-    cum_ret = (1+sr_ret).cumprod()
+    cum_ret = (1+sr_ret).cumprod().iloc[-1]
     vol = sr_ret.std() * np.sqrt(num_days)
     sharpe = ret/vol
     sr_perf = (1+sr_ret).cumprod()
@@ -41,9 +41,9 @@ def cal_backtest_stats(sr_ret: pd.Series,
     sr_month_ret  = sr_ret.groupby(pd.Grouper(freq='M')).apply(lambda x: (1+x).prod()-1)
     pct_positive_yr = len(sr_annual_ret[sr_annual_ret>0]) / len(sr_annual_ret)
     pct_positive_month = len(sr_month_ret[sr_month_ret>0]) / len(sr_month_ret)
-    return {'ret': ret,
+    return {'cum_ret': cum_ret,
+            'ret': ret,
             'vol': vol, 
-            'cum_ret': cum_ret, 
             'sharpe': sharpe, 
             'max_dd': max_dd, 
             'max_dd_vol': max_dd_vol, 
@@ -59,8 +59,7 @@ def generate_stats_table(df: pd.DataFrame):
     all_results_dict = {}
     for col in df.columns: 
         all_results_dict[col] = cal_backtest_stats(df[col].pct_change())
-    df_result = pd.DataFrame(data=all_results_dict).T.rename({'cum_ret':       'Cumulative Performance', 
-                                                              'ret':           'Annualised Return', 
+    df_result = pd.DataFrame(data=all_results_dict).T.rename({'ret':           'Annualised Return', 
                                                               'vol':           'Annualised Volatility', 
                                                               'sharpe':        'Sharpe Ratio',
                                                               'max_dd':        'Max Drawdown', 
@@ -68,7 +67,7 @@ def generate_stats_table(df: pd.DataFrame):
                                                               'sortino':       'Sortino Ratio', 
                                                               'pct_positive_month': '% +ve month'}, 
                                                               axis=1)
-    df_result_print = df_result[['Cumulative Performance', 'Annualised Return', 
+    df_result_print = df_result[['Annualised Return', 
                                  'Annualised Volatility', 'Sharpe Ratio', 
                                  'Max Drawdown',
                                  'Max Drawdown/Vol Ratio', 'Sortino Ratio', 

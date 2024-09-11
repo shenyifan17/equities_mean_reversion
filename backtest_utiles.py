@@ -155,8 +155,8 @@ def calcualte_period_PnL_with_pairs(df_period: pd.DataFrame,
                                                     stoploss_std=stoploss_std)
     df_period_pct = df_period[[ticker1, ticker2]].pct_change()
     df_period_pct['target_exposure'] = target_exposure_list
-    # 1 day between observation and execution, both at close
-    df_period_pct['target_exposure'] = df_period_pct['target_exposure'].shift(1)
+    # 1 day between observation and execution, both at close - shift 2 to reflect this logic
+    df_period_pct['target_exposure'] = df_period_pct['target_exposure'].shift(2)
     df_period_pct[f'target_exposure_{ticker1}'] = df_period_pct['target_exposure'] * (-1) * trading_param['beta']
     df_period_pct[f'target_exposure_{ticker2}'] = df_period_pct['target_exposure'] 
     # Approximate daily percentage PnL, assuming constant target exposure with no drift. Add transaction cost
@@ -170,7 +170,7 @@ def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame,
                                      trigger_std: float=1.96,
                                      stoploss_std: float=3.09,
                                      num_pairs: int=10,
-                                     transaction_cost: float=0.0005):
+                                     transaction_cost: float=0.0010):
     ''''
     Run an equal weight portfolio
     '''
@@ -188,6 +188,7 @@ def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame,
                                                     stoploss_std=stoploss_std,
                                                     transaction_cost=transaction_cost)
         df_portfolio[f'PnL_{ticker1}_{ticker2}'] = sr_PnL_pct * (1/num_pairs)
+    df_portfolio['agg_pct_ret'] = df_portfolio.sum(axis=1)
     df_portfolio['NAV'] = (1+df_portfolio.sum(axis=1)).cumprod()
     return df_portfolio
         
