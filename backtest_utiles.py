@@ -193,12 +193,5 @@ def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame,
     return df_portfolio
         
 
-if __name__ == '__main__':
-    df = pd.read_csv('SPX_components_close_data.csv').set_index('Date')
-    df.index = pd.to_datetime(df.index)
-    df_last_yr = df[df.index>='2022-01-01']
-    coint_test_list = select_stock_pairs_from_correlation(df_period=df_last_yr, 
-                                                          top_corr_pairs=15,
-                                                          drop_correlation=0.97)
 
 

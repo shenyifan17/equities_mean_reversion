@@ -11,9 +11,23 @@ strategy. I haven't spent time on mean reversion/stats arb strategy before, belo
         One problem (as many other systematic strategies using look back window is that the beta determination is too regid as the look back window is fixed )
         Solution is to use Kalman Filter to keep obtain new information adjust the beta 
 - In terms of exection, the most vanilla approach is to consider how much standard deviation the adjusted spread is away from the mean 
-  Then execute when the adjusted spread passes the entry level, close the position when the adjusted spread converged to 0
+  Then execute when the adjusted spread passes the entry level, close the position when the adjusted spread converged to mean. 
+  Also a stop loss trigger is added to avoid structural relationship breakdown for some pairs and cause big drawdowns
 
 - The Cartesian product of all the parameter combinations are tested, statistics are plotted using an interactive heatmap. The idea of a successful strategy is 
   that the overall performances/statistics are not sensitive to paramters pertubation, and the heatmap should be stable
 
    
+- Performance is quite impressive and robust between 2010 to 2024
+  This is likely due to each pair/trade has a high success rate to make a profit, 
+  and the overall portfolio returns are smoothed out with the diversification effect from 
+  multiple pairs
+
+- Potential improvements:
+  a. Use Kalman Filter to update the best hedge ratio, rather than doing one linear regression every year
+  b. Run cointegration test more often to include/remove pairs more dynamically 
+
+- Other interesting approaches to test for mean reversion/stats arb: 
+  Ornstein-Uhlenbeck (OU) provides a framework for mean reversion. Tim Leung's reseach on this topic is particularly intersting. 
+  There are even novel proposition of combining OU process and machine learning on mean reversion.
+  Link: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2222196
