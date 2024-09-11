@@ -34,8 +34,6 @@ def cal_backtest_stats(sr_ret: pd.Series,
     sr_perf = (1+sr_ret).cumprod()
     sr_dd = (sr_perf - sr_perf.cummax()) / sr_perf.cummax()
     max_dd = sr_dd.min()
-    dd_end = str(np.argmin(sr_dd))[:10]
-    dd_start = str(np.argmax(sr_perf[:dd_end]))[:10]
     max_dd_vol = max_dd / vol
     downside_dev = sr_ret[sr_ret<0].std() * np.sqrt(num_days)
     sortino = ret/downside_dev
@@ -48,8 +46,6 @@ def cal_backtest_stats(sr_ret: pd.Series,
             'cum_ret': cum_ret, 
             'sharpe': sharpe, 
             'max_dd': max_dd, 
-            'dd_start': dd_start, 
-            'dd_end': dd_end, 
             'max_dd_vol': max_dd_vol, 
             'sortino': sortino, 
             'pct_positive_month': pct_positive_month, 
@@ -68,15 +64,13 @@ def generate_stats_table(df: pd.DataFrame):
                                                               'vol':           'Annualised Volatility', 
                                                               'sharpe':        'Sharpe Ratio',
                                                               'max_dd':        'Max Drawdown', 
-                                                              'dd_start':      'Drawdown Start', 
-                                                              'dd_end':        'Drawdown End', 
-                                                              'max_dd_vol':    'Max Drawdown / Vol ratio', 
+                                                              'max_dd_vol':    'Max Drawdown/Vol Ratio', 
                                                               'sortino':       'Sortino Ratio', 
                                                               'pct_positive_month': '% +ve month'}, 
                                                               axis=1)
     df_result_print = df_result[['Cumulative Performance', 'Annualised Return', 
                                  'Annualised Volatility', 'Sharpe Ratio', 
-                                 'Max Drawdown', 'Drawdown Start', 'Drawdown End', 
+                                 'Max Drawdown',
                                  'Max Drawdown/Vol Ratio', 'Sortino Ratio', 
                                  '% +ve month']].T
     return df_result_print

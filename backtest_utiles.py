@@ -1,8 +1,6 @@
 '''''
 Utile functions for mean reversion pair trading strategy
 '''
-from distutils.ccompiler import gen_lib_options
-from lib2to3.pgen2.pgen import generate_grammar
 import pandas as pd 
 import numpy as np 
 from itertools import combinations
@@ -71,8 +69,6 @@ def rescale_price_between_selected_pairs(df_period: pd.DataFrame,
     alpha = result.params[0]
     beta = result.params[1]
     spread_z = np.log(df_period[ticker2].values) - np.log(df_period[ticker1].values)*beta - alpha
-    # df_spread = pd.DataFrame(np.log(df_period[ticker2]) - np.log(df_period[ticker1])*beta-alpha,
-    #                          columns=['spread'])
     trading_params = {'beta':   beta,
                       'alpha':  alpha, 
                       'spread_z': spread_z}
@@ -167,9 +163,34 @@ def calcualte_period_PnL_with_pairs(df_period: pd.DataFrame,
     sr_PnL_pct = (((df_period_pct[ticker1]  * df_period_pct[f'target_exposure_{ticker1}']\
                   + df_period_pct[ticker2] * df_period_pct[f'target_exposure_{ticker2}']))\
                   - ((df_period_pct[f'target_exposure_{ticker1}'].diff().abs())* (-1) * transaction_cost)) 
-    return sr_PnL_pct
+    return sr_PnL_pct.fillna(0)
 
-    
+def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame, 
+                                     coint_pairs: list,
+                                     trigger_std: float=1.96,
+                                     stoploss_std: float=3.09,
+                                     num_pairs: int=10,
+                                     transaction_cost: float=0.0005):
+    ''''
+    Run an equal weight portfolio
+    '''
+    df_portfolio = pd.DataFrame(index=df_period.index)
+    for i in range(num_pairs):
+        ticker1, ticker2 = coint_pairs[i][0], coint_pairs[i][1]
+        trading_params = rescale_price_between_selected_pairs(df_period=df_period,
+                                                            ticker1=coint_pairs[i][0],
+                                                            ticker2=coint_pairs[i][1])
+        sr_PnL_pct = calcualte_period_PnL_with_pairs(df_period=df_period, 
+                                                    ticker1=ticker1,
+                                                    ticker2=ticker2, 
+                                                    trading_param=trading_params,
+                                                    trigger_std=trigger_std,
+                                                    stoploss_std=stoploss_std,
+                                                    transaction_cost=transaction_cost)
+        df_portfolio[f'PnL_{ticker1}_{ticker2}'] = sr_PnL_pct * (1/num_pairs)
+    df_portfolio['NAV'] = (1+df_portfolio.sum(axis=1)).cumprod()
+    return df_portfolio
+        
 
 if __name__ == '__main__':
     df = pd.read_csv('SPX_components_close_data.csv').set_index('Date')
