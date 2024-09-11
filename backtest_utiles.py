@@ -1,8 +1,8 @@
 '''''
 Utile functions for mean reversion pair trading strategy
 '''
-from pyexpat.errors import XML_ERROR_UNCLOSED_TOKEN
-from statistics import linear_regression
+from distutils.ccompiler import gen_lib_options
+from lib2to3.pgen2.pgen import generate_grammar
 import pandas as pd 
 import numpy as np 
 from itertools import combinations
@@ -54,6 +54,8 @@ def rescale_price_between_selected_pairs(df_period: pd.DataFrame,
                                          ticker2: str):
     ''''
     Linear regression on two conintegrated stocks, then scale spread
+    Return a dictionary of alpha, beta and the spread array 
+    (For later step entry/exit calculation)
     '''
     # ticker1
     x = np.log(df_period[ticker1].values)
@@ -64,10 +66,95 @@ def rescale_price_between_selected_pairs(df_period: pd.DataFrame,
     result = linear_reg.fit()
     alpha = result.params[0]
     beta = result.params[1]
-    df_spread = pd.DataFrame(np.log(df_period[ticker2]) - np.log(df_period[ticker1])*beta-alpha)
+    spread_z = np.log(df_period[ticker2].values) - np.log(df_period[ticker1].values)*beta - alpha
+    # df_spread = pd.DataFrame(np.log(df_period[ticker2]) - np.log(df_period[ticker1])*beta-alpha,
+    #                          columns=['spread'])
+    trading_params = {'beta':   beta,
+                      'alpha':  alpha, 
+                      'spread_z': spread_z}
+    return trading_params
 
+def generate_signal_for_pair(trading_param: dict,
+                             trigger_std: float=1.96,
+                             stoploss_std: float=3.09):
+    ''''
+    Given two tickers, backtest paris trading strategy using the 
+    trading parameters
+
+    Generate target exposures with entry and stop loss condition
+    '''
+    spread_z = trading_param['spread']
+    mean = spread_z.mean()
+    std = spread_z.std()
+    entry_upper_bound = mean + trigger_std * std
+    stop_upper_bound = mean + stoploss_std * std
+    entry_lower_bound = mean - trigger_std * std
+    stop_lower_bound = mean - stoploss_std * std
+    # When spread goes above upper bound, then sell. 
+    # When spread goes below lower bound, then buy.
+    # generate buy-close and sell-close signals
+    target_exposure_list = []
+    trade_rec_list = []
+    target_exposure = 0 
+    long_status, short_status = False, False
+    mean = spread_z.mean()
+    for i in range(spread_z.shape[0]):
+        # Enter short when z score spread hit upper limit
+        if (spread_z[i] > entry_upper_bound) & (not short_status) & (spread_z[i] < stop_upper_bound):
+            target_exposure = -1
+            short_status = True
+            trade_rec_list.append('enter short')
+        # Close short when z score spread hit mean and take profit
+        elif (short_status) & (spread_z[i] < mean): 
+            target_exposure = 0
+            short_status = False
+            trade_rec_list.append('close short with profit')
+        # Stop loss short position
+        elif (short_status) & (spread_z[i] > stop_upper_bound):
+            target_exposure = 0
+            short_status = False
+            trade_rec_list.append('close short with loss')
+
+        # Enter long when z score spread hit lower limit
+        elif (spread_z[i] < entry_lower_bound) & (not long_status) & (spread_z[i] > stop_lower_bound):
+            target_exposure = 1
+            long_status = True
+            trade_rec_list.append('enter long')
+        # Close long position when z score hit mean and take profit
+        elif (long_status) & (spread_z[i] > mean): 
+            target_exposure = 0
+            long_status = False
+            trade_rec_list.append('close long with profit')
+        # Stop loss long position
+        elif (long_status) & (spread_z[i] < stop_lower_bound):
+            target_exposure = 0
+            long_status = False
+            trade_rec_list.append('close long with loss')
+
+        else:
+            trade_rec_list.append('no trade')
+
+        target_exposure_list.append(target_exposure) 
+
+    return target_exposure_list
+
+
+def calcualte_period_PnL_with_pairs(df_period: pd.DataFrame, 
+                                    ticker1: str,
+                                    ticker2: str,
+                                    trading_param: dict, 
+                                    trigger_std: float=1.96, 
+                                    stoploss_std: float=3.09):
+    '''''
+    Give a pair, using the generated signal (target exposure) and hedge ratio
+    to calculate PnL
+    '''
+    target_exposure_list = generate_signal_for_pair(trading_param=trading_param,
+                                                    trigger_std=trigger_std,
+                                                    stoploss_std=stoploss_std)
+    df_period = 
     
-    pass
+
     
 
 if __name__ == '__main__':
