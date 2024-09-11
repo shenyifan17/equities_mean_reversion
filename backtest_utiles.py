@@ -32,11 +32,13 @@ def select_stock_pairs_from_correlation(df_period: pd.DataFrame,
 # Function to find cointegrated pairs
 def find_cointegrated_pairs(df_period: pd.DataFrame,
                             coint_test_list: list, 
-                            p_value_threshold: float=0.01) -> list:
+                            p_value_threshold: float=0.1,
+                            num_pairs: int=10) -> list:
     ''''
     Give a list of tickers to test, and p_value_threshold 
     Find cointegrated pairs using Engle-Granger test
     Return a list of tuples with coinegrated pairs, and the correspoinding p-value
+    Find the top number of pairs with smallest p-values
     '''
     n = len(coint_test_list)  # Number of tickers
     # Stack adjusted close prices column-wise
@@ -46,7 +48,9 @@ def find_cointegrated_pairs(df_period: pd.DataFrame,
         result = coint(adj_close_data[:, i], adj_close_data[:, j])  # Perform cointegration test
         pvalue_matrix[i, j] = result[1]  # Store p-value
         pvalue_matrix[j, i] = result[1]  # Symmetric entry in the matrix
-    coint_pairs = [(coint_test_list[i], coint_test_list[j], pvalue_matrix[i,j]) for i in range(n) for j in range(i+1, n) if pvalue_matrix[i, j] < p_value_threshold]
+    coint_pairs_all = [(coint_test_list[i], coint_test_list[j], pvalue_matrix[i,j]) for i in range(n) for j in range(i+1, n) if pvalue_matrix[i, j] < p_value_threshold]
+    # Sort by p-value, only return the pairs with smallest p value
+    coint_pairs = sorted(coint_pairs_all, key=lambda x: x[2])[:num_pairs]
     return coint_pairs  # Return the p-value matrix and cointegrated pairs
 
 def rescale_price_between_selected_pairs(df_period: pd.DataFrame, 
@@ -83,7 +87,7 @@ def generate_signal_for_pair(trading_param: dict,
 
     Generate target exposures with entry and stop loss condition
     '''
-    spread_z = trading_param['spread']
+    spread_z = trading_param['spread_z']
     mean = spread_z.mean()
     std = spread_z.std()
     entry_upper_bound = mean + trigger_std * std
@@ -144,7 +148,8 @@ def calcualte_period_PnL_with_pairs(df_period: pd.DataFrame,
                                     ticker2: str,
                                     trading_param: dict, 
                                     trigger_std: float=1.96, 
-                                    stoploss_std: float=3.09):
+                                    stoploss_std: float=3.09,
+                                    transaction_cost: float=0.0005):
     '''''
     Give a pair, using the generated signal (target exposure) and hedge ratio
     to calculate PnL
@@ -152,8 +157,17 @@ def calcualte_period_PnL_with_pairs(df_period: pd.DataFrame,
     target_exposure_list = generate_signal_for_pair(trading_param=trading_param,
                                                     trigger_std=trigger_std,
                                                     stoploss_std=stoploss_std)
-    df_period = 
-    
+    df_period_pct = df_period[[ticker1, ticker2]].pct_change()
+    df_period_pct['target_exposure'] = target_exposure_list
+    # 1 day between observation and execution, both at close
+    df_period_pct['target_exposure'] = df_period_pct['target_exposure'].shift(1)
+    df_period_pct[f'target_exposure_{ticker1}'] = df_period_pct['target_exposure'] * (-1) * trading_param['beta']
+    df_period_pct[f'target_exposure_{ticker2}'] = df_period_pct['target_exposure'] 
+    # Approximate daily percentage PnL, assuming constant target exposure with no drift. Add transaction cost
+    sr_PnL_pct = (((df_period_pct[ticker1]  * df_period_pct[f'target_exposure_{ticker1}']\
+                  + df_period_pct[ticker2] * df_period_pct[f'target_exposure_{ticker2}']))\
+                  - ((df_period_pct[f'target_exposure_{ticker1}'].diff().abs())* (-1) * transaction_cost)) 
+    return sr_PnL_pct
 
     
 
