@@ -14,8 +14,9 @@ strategy. I haven't spent time on mean reversion/stats arb strategy before, belo
   Then execute when the adjusted spread passes the entry level, close the position when the adjusted spread converged to mean. 
   Also a stop loss trigger is added to avoid structural relationship breakdown for some pairs and cause big drawdowns
 
-- The Cartesian product of all the parameter combinations are tested, statistics are plotted using an interactive heatmap. The idea of a successful strategy is 
-  that the overall performances/statistics are not sensitive to paramters pertubation, and the heatmap should be stable
+- The Cartesian product of all the parameter combinations are tested, statistics are plotted using an interactive heatmap ("parameter_test_heatmap.html"). 
+  Import statistics heatmaps (return, vol, sharpe ratio etc.) are saved
+  The idea of a successful strategy is that the overall performances/statistics are not sensitive to paramters pertubation, and the heatmap should be stable
 
    
 - Performance is quite impressive and robust between 2010 to 2024
