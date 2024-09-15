@@ -26,6 +26,8 @@ def run_full_backtest(start_year=2010,
     schedule_list = [{'train': [f'{year}-01-01', f'{year}-12-31'], 'trade': [f'{year+1}-01-01', f'{year+1}-12-31']} for year in year_list]
     # list of portfolio pct returns per year
     LT_agg_pnl_list = []
+    # Record all Sharpe ratio per pair per year
+    all_pair_sharpe_list = []
     for schedule in schedule_list: 
         df_train = df[(df.index>=schedule['train'][0]) & (df.index<=schedule['train'][1])]
         df_trade = df[(df.index>=schedule['trade'][0]) & (df.index<=schedule['trade'][1])]
@@ -41,18 +43,19 @@ def run_full_backtest(start_year=2010,
                                               p_value_threshold=0.2,
                                               num_pairs=num_pairs) 
         # Trade pairs this year, equal weighted portfolio
-        df_portfolio = run_equal_weight_pairs_portfolio(df_period=df_trade,
-                                                        coint_pairs=coint_pairs, 
-                                                        trigger_std=trigger_std,
-                                                        stoploss_std=stoploss_std,
-                                                        num_pairs=num_pairs,
-                                                        transaction_cost=transaction_cost)
+        df_portfolio, sharpe_list = run_equal_weight_pairs_portfolio(df_period=df_trade,
+                                                                     coint_pairs=coint_pairs, 
+                                                                     trigger_std=trigger_std,
+                                                                     stoploss_std=stoploss_std,
+                                                                     num_pairs=num_pairs,
+                                                                     transaction_cost=transaction_cost)
         LT_agg_pnl_list.append(df_portfolio['agg_pct_ret'])
+        all_pair_sharpe_list+=sharpe_list
     sr_LT_pct_ret = pd.Series()
     # Long term pct return, of aggrated portfolios per year
     for sr_year in LT_agg_pnl_list: 
         sr_LT_pct_ret = pd.concat([sr_LT_pct_ret, sr_year])
-    return sr_LT_pct_ret
+    return sr_LT_pct_ret, all_pair_sharpe_list
         
 
 if __name__=='__main__':
@@ -64,5 +67,5 @@ if __name__=='__main__':
         'trigger_std': 1.96,
         'stoploss_std': 3.00
     }
-    sr_LT_pct_ret = run_full_backtest(**params)
+    sr_LT_pct_ret, all_pair_sharpe_list = run_full_backtest(**params)
     sr_nav = (100*(1+sr_LT_pct_ret).cumprod())

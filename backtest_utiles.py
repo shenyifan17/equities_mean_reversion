@@ -6,6 +6,7 @@ import numpy as np
 from itertools import combinations
 from statsmodels.tsa.stattools import coint
 import statsmodels.api as sm
+from cal_backtest_stats import *
 
 def select_stock_pairs_from_correlation(df_period: pd.DataFrame, 
                                         top_corr_pairs: int=15,
@@ -162,7 +163,7 @@ def calcualte_period_PnL_with_pairs(df_period: pd.DataFrame,
     # Approximate daily percentage PnL, assuming constant target exposure with no drift. Add transaction cost
     sr_PnL_pct = (((df_period_pct[ticker1]  * df_period_pct[f'target_exposure_{ticker1}']\
                   + df_period_pct[ticker2] * df_period_pct[f'target_exposure_{ticker2}']))\
-                  - ((df_period_pct[f'target_exposure_{ticker1}'].diff().abs())* (-1) * transaction_cost)) 
+                  - ((df_period_pct[f'target_exposure_{ticker1}'].diff().abs()) * transaction_cost)) 
     return sr_PnL_pct.fillna(0)
 
 def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame, 
@@ -174,6 +175,8 @@ def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame,
     ''''
     Run an equal weight portfolio
     '''
+    # Extract all Sharpe Ratio from each pairs across full backtest
+    sharpe_list = []
     df_portfolio = pd.DataFrame(index=df_period.index)
     for i in range(num_pairs):
         ticker1, ticker2 = coint_pairs[i][0], coint_pairs[i][1]
@@ -187,10 +190,13 @@ def run_equal_weight_pairs_portfolio(df_period: pd.DataFrame,
                                                     trigger_std=trigger_std,
                                                     stoploss_std=stoploss_std,
                                                     transaction_cost=transaction_cost)
+        # Record all Sharpe ratios from every pair per year
+        stats_dict = cal_backtest_stats(sr_PnL_pct)
+        sharpe_list.append(stats_dict['sharpe'])
         df_portfolio[f'PnL_{ticker1}_{ticker2}'] = sr_PnL_pct * (1/num_pairs)
     df_portfolio['agg_pct_ret'] = df_portfolio.sum(axis=1)
     df_portfolio['NAV'] = (1+df_portfolio.sum(axis=1)).cumprod()
-    return df_portfolio
+    return df_portfolio, sharpe_list
         
 
 
